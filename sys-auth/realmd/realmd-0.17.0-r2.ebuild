@@ -27,8 +27,10 @@ RDEPEND="${DEPEND}"
 QA_MULTILIB_PATHS="usr/lib/realmd/realmd"
 
 PATCHES=(
-	"${FILESDIR}/${PN}-0.17.0-use-target-arch-pkg-config-to-fix-cross-compilation.patch"
-	"${FILESDIR}/${PN}-0.17.0-put-d-bus-policy-files-in-usr-share.patch"
+	"${FILESDIR}/0001-configure-update-some-macros-for-autoconf-2.71.patch"
+	"${FILESDIR}/0002-Use-target-arch-pkg-config-to-fix-cross-compilation.patch"
+	"${FILESDIR}/0003-Put-D-Bus-policy-files-in-usr-share.patch"
+	"${FILESDIR}/0004-use-autoreconf-and-gettext.patch"
 )
 
 src_prepare() {
