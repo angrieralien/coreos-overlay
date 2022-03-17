@@ -47,8 +47,8 @@ dev-util/patchelf *
 =perl-core/File-Path-2.130.0 ~arm64
 =sec-policy/selinux-base-2.20220106-r1  ~arm64
 =sec-policy/selinux-base-policy-2.20220106-r1 ~arm64
-=sec-policy/selinux-unconfined-2.20200818-r2 ~arm64
-=sec-policy/selinux-virt-2.20200818-r2 ~arm64
+=sec-policy/selinux-unconfined-2.20220106-r1 ~arm64
+=sec-policy/selinux-virt-2.20220106-r1 ~arm64
 =sys-apps/checkpolicy-3.1 ~arm64
 
 =sys-apps/man-db-2.7.6.1-r2 ~arm64
