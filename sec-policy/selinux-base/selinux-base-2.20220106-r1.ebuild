@@ -3,6 +3,10 @@
 
 EAPI="7"
 
+TMPFILES_OPTIONAL=1
+inherit systemd tmpfiles
+
+
 PYTHON_COMPAT=( python3_{8,9,10} )
 PYTHON_REQ_USE="xml"
 inherit python-any-r1
@@ -27,14 +31,27 @@ HOMEPAGE="https://wiki.gentoo.org/wiki/Project:SELinux"
 LICENSE="GPL-2"
 SLOT="0"
 
-RDEPEND=">=sys-apps/policycoreutils-2.8"
+RDEPEND=">=sys-apps/policycoreutils-2.8
+        >=sys-apps/checkpolicy-2.8
+"
 DEPEND="${RDEPEND}"
-BDEPEND="
-	${PYTHON_DEPS}
-	>=sys-apps/checkpolicy-2.8
-	sys-devel/m4"
+# flatcar: BDEPEND on python3[xml] - normally pulled in through policycoreutils
+# but we made that dep conditional on USE=python
+BDEPEND="sys-devel/m4
+    >=dev-lang/python-3[xml]
+"
+
+# flatcar changes
+PATCHES=(
+	"${FILESDIR}"/0001-policy-modules-kernel-all-more-actions-for-kernel.patch
+	"${FILESDIR}"/0001-policy-ms-MCS-restricts-relabelfrom.patch
+	"${FILESDIR}"/icmp-bind.patch
+)
+
 
 S=${WORKDIR}/
+
+
 
 src_prepare() {
 	if [[ ${PV} != 9999* ]]; then
@@ -42,6 +59,8 @@ src_prepare() {
 		eapply -p0 "${WORKDIR}/0001-full-patch-against-stable-release.patch"
 	fi
 
+	# flatcar changes
+	eapply -p0 "${PATCHES[@]}"
 	eapply_user
 
 	cd "${S}/refpolicy" || die
@@ -83,6 +102,11 @@ src_configure() {
 
 		sed -i -e "/= module/d" "${S}/${i}/policy/modules.conf" || die
 
+		# flatcar changes: it's required to run polkit without segfault
+		# we need to pass this argument now before the compilation of the policy
+		sed -i "s/allow_execmem = false/allow_execmem = true/" "${S}/${i}/policy/booleans.conf" || die
+
+
 		sed -i -e '/^QUIET/s/n/y/' -e "/^NAME/s/refpolicy/$i/" \
 			"${S}/${i}/build.conf" || die "build.conf setup failed."
 
@@ -112,7 +136,11 @@ src_compile() {
 
 	for i in ${POLICY_TYPES}; do
 		cd "${S}/${i}" || die
-		emake base
+
+		# flatcar changes
+		emake base BINDIR="${ROOT}/usr/bin" NAME=$i SHAREDIR="${ROOT%/}"/usr/share/selinux \
+			LD_LIBRARY_PATH="${ROOT}/usr/lib64:${LD_LIBRARY_PATH}" -C "${S}"/${i}
+
 		if use doc; then
 			emake html
 		fi
@@ -145,13 +173,29 @@ src_install() {
 
 	done
 
+	# flatcar changes
+	dotmpfiles "${FILESDIR}/tmpfiles.d/selinux-base.conf"
+	systemd-tmpfiles --root="${D}" --create selinux-base.conf
+
 	docinto /
 	dodoc doc/Makefile.example doc/example.{te,fc,if}
 
 	doman man/man8/*.8;
 
-	insinto /etc/selinux
+	# flatcar changes
+	insinto /usr/lib/selinux
+
 	doins "${FILESDIR}/config"
+
+	insinto /etc/selinux/mcs/contexts
+	doins "${FILESDIR}/lxc_contexts"
+
+	# flatcar changes
+	mkdir -p "${D}/usr/lib/selinux"
+	for i in ${POLICY_TYPES}; do
+		mv "${D}/etc/selinux/${i}" "${D}/usr/lib/selinux"
+		dosym "../../usr/lib/selinux/${i}" "/etc/selinux/${i}"
+	done
 
 	insinto /usr/share/portage/config/sets
 	doins "${FILESDIR}/selinux.conf"
